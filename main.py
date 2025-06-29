@@ -1,18 +1,43 @@
-from dotenv import load_dotenv
-from apit212 import *
-import os
+from webscraper import *
+import math
 
-load_dotenv('.env')
+def main():
 
-username: str = os.getenv('USER')
-password: str = os.getenv('PASS')
+    #TODO
+    # Make the stop loss ajust with time going up
 
-api = Apit212()
+    symbol = "TSLA"
+    timeframe = "1min"
+    feed="iex"
+    start_date = (datetime.now() - timedelta(days=1)).date()
 
-api.setup(username=username, password=password, mode="demo")
+    data_frame = pd.DataFrame()
+    data_frame = get_bars_data(data_frame, symbol, timeframe, start_date, feed)
+    close_price = data_frame.iloc[-1]["c"]
 
-equity = Equity(cred=api)
+    qty = math.floor((close_price / get_account()["cash"]) * 10) / 10
+    entry_price = close_price * 1.1
+    take_profit = close_price * 2
+    stop_loss = close_price * 1
 
-print(equity.auth_validate())
+    #Order payload
+    payload = {
+        "symbol": symbol,
+        "qty": str(qty),
+        "side": "buy",
+        "type": "stop_limit",
+        "time_in_force": "gtc",
+        "stop_price": str(entry_price),     
+        "order_class": "bracket",
+        "take_profit": {
+            "limit_price": str(take_profit) 
+        },
+        "stop_loss": {
+            "stop_price": str(stop_loss),
+        }
+    }
 
-print(equity.get_funds())
+    order_stock(payload)
+
+if __name__ == "__main__":
+    main()
