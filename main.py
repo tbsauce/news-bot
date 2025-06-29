@@ -5,6 +5,7 @@ def main():
 
     #TODO
     # Make the stop loss ajust with time going up
+    # Edit order to change stop loss
 
     symbol = "TSLA"
     timeframe = "1min"
@@ -12,6 +13,7 @@ def main():
     start_date = (datetime.now() - timedelta(days=1)).date()
 
     data_frame = pd.DataFrame()
+
     data_frame = get_bars_data(data_frame, symbol, timeframe, start_date, feed)
     close_price = data_frame.iloc[-1]["c"]
 

@@ -5,8 +5,6 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import numpy as np
 
-from itertools import product
-
 # Load from config.ini
 config = configparser.ConfigParser()
 config.read("config.ini")
@@ -77,113 +75,6 @@ def get_bars_data(data_frame, symbol ,time_frame, start_date, feed):
         print("unexpected error getting bars from API")
     
     return data_frame.drop_duplicates()
-
-def get_donchian_channel(data_frame, n_period, offset):
-
-    data_frame['lower'] = data_frame['l'].rolling(window=n_period).min().shift(offset)
-    data_frame['upper'] = data_frame['h'].rolling(window=n_period).max().shift(offset)
-    data_frame['middle'] = ((data_frame['upper'] + data_frame['lower']) / 2).shift(offset)
-
-    return data_frame
-
-def get_volume(data_frame):
-
-    data_frame['volume_bars'] = data_frame['v']
-    data_frame.loc[data_frame['c'] < data_frame['c'].shift(1), 'volume_bars'] *= -1
-    
-    return data_frame
-
-def get_volume_moving_average(data_frame, n_period):
-
-    data_frame['volume_ma'] = data_frame['v'].rolling(window=n_period).mean()
-
-    return data_frame
-
-def get_williams_r(data_frame, n_period):
-
-    highest = data_frame['h'].rolling(window=n_period).max()
-    lowest = data_frame['l'].rolling(window=n_period).min()
-
-    data_frame['WilliamsR'] = ((highest - data_frame['c']) / (highest - lowest)) * -100
-    
-    return data_frame
-
-def live_strategy(data_frame, stop_loss_percent, stop_gain_percent):
-    
-    # Process only last line 
-    row = data_frame.iloc[-1]
-
-    # Initialize variables
-    trade_active = False
-    entry_price = None
-    stop_loss_price = None
-
-    # Initialize all rows as 'HOLD'/0
-    data_frame['Trade Action'] = 0.0
-    
-    # Entry Condition
-    if( not trade_active and row['c'] >= row['upper'] and row['WilliamsR'] >= -20 and row['v'] > row['volume_ma'] and row['volume_bars'] > 0):
-        
-        trade_active = True
-        entry_price = row['c']
-        stop_loss_price = entry_price * (1 - stop_loss_percent / 100)
-        stop_gain_price = entry_price * (1 + stop_gain_percent / 100)
-        # Initialize row as 'BUY'/1
-        data_frame.at[index, 'Trade Action'] = entry_price
-
-    # Exit Condition and Initialize rows as 'SELL'/-1
-    elif trade_active:
-        if row['c'] <= stop_loss_price:
-            trade_active = False
-            data_frame.at[index, 'Trade Action'] = -1 * stop_loss_price
-
-        elif row['c'] >= stop_gain_price:
-            trade_active = False
-            data_frame.at[index, 'Trade Action'] = -1 * stop_gain_price
-
-        elif row['c'] < row['middle']:
-            trade_active = False
-            data_frame.at[index, 'Trade Action'] = -1 * row['middle']
-
-    return data_frame
-
-def strategy(data_frame, stop_loss_percent, stop_gain_percent):
-
-    # Initialize variables
-    trade_active = False
-    entry_price = None
-    stop_loss_price = None
-
-    # Initialize all rows as 'HOLD'/0
-    data_frame['Trade Action'] = 0.0
-
-    for index, row in data_frame.iterrows():
-        # Entry Condition
-        if( not trade_active and row['c'] >= row['upper'] and row['WilliamsR'] >= -20 and row['v'] > row['volume_ma'] and row['volume_bars'] > 0):
-            
-            trade_active = True
-            entry_price = row['c']
-            stop_loss_price = entry_price * (1 - stop_loss_percent / 100)
-            stop_gain_price = entry_price * (1 + stop_gain_percent / 100)
-            # Initialize row as 'BUY'/1
-            data_frame.at[index, 'Trade Action'] = entry_price
-
-        # Exit Condition and Initialize rows as 'SELL'/-1
-        elif trade_active:
-            if row['c'] <= stop_loss_price:
-                trade_active = False
-                data_frame.at[index, 'Trade Action'] = -1 * stop_loss_price
-
-            elif row['c'] >= stop_gain_price:
-                trade_active = False
-                data_frame.at[index, 'Trade Action'] = -1 * stop_gain_price
-    
-            elif row['c'] < row['middle']:
-                trade_active = False
-                data_frame.at[index, 'Trade Action'] = -1 * row['middle']
-
-
-    return data_frame
 
 def calculate_trade_stats(data_frame):
 
